@@ -73,29 +73,36 @@ export default function CarSearchTool() {
     });
   }, [results]);
 
-  const fetchFromGoogleSheet = async () => {
-    try {
-      const sheetUrl =
-        "https://docs.google.com/spreadsheets/d/1XwBko5v8zOdTdv-By8HK_DvZnYT2T12mBw_SIbCfMkE/export?format=csv&gid=769459790";
-      const response = await fetch(sheetUrl);
-      const text = await response.text();
-      const rows = text.split("\n").map((row) => row.split(","));
-      const headers = rows.find((row) => row.some((cell) => cell.trim() !== ""));
-      const values = rows.slice(rows.indexOf(headers) + 1);
-      const jsonData = values
-        .filter((row) => row.length === headers.length && row.some((cell) => cell.trim() !== ""))
-        .map((row) =>
-          Object.fromEntries(
-            row.map((cell, i) => [headers[i]?.trim(), cell?.trim()])
-          )
-        );
-      setData(jsonData);
-      setResults(jsonData);
-    } catch (error) {
-      console.error(error);
-      alert("Error fetching Google Sheet data");
-    }
-  };
+  // قراءة البيانات من Google Sheets عند تحميل الصفحة
+  useEffect(() => {
+    const fetchFromGoogleSheet = async () => {
+      try {
+        // رابط الـ Google Sheets بصيغة CSV
+        const sheetUrl = "https://docs.google.com/spreadsheets/d/1XwBko5v8zOdTdv-By8HK_DvZnYT2T12mBw_SIbCfMkE/export?format=csv&gid=769459790";
+        const response = await fetch(sheetUrl);
+        const text = await response.text();
+
+        // تحويل البيانات إلى JSON
+        const rows = text.split("\n").map((row) => row.split(","));
+        const headers = rows.find((row) => row.some((cell) => cell.trim() !== ""));
+        const values = rows.slice(rows.indexOf(headers) + 1);
+        const jsonData = values
+          .filter((row) => row.length === headers.length && row.some((cell) => cell.trim() !== ""))
+          .map((row) =>
+            Object.fromEntries(
+              row.map((cell, i) => [headers[i]?.trim(), cell?.trim()])
+            )
+          );
+        setData(jsonData);
+        setResults(jsonData);
+      } catch (error) {
+        console.error(error);
+        alert("Error fetching Google Sheet data");
+      }
+    };
+
+    fetchFromGoogleSheet();
+  }, []); // هذه الفاصلة فارغة تعني أنها تعمل مرة واحدة عند تحميل الصفحة
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -180,7 +187,7 @@ export default function CarSearchTool() {
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
-      <h1 style={{ color: '#f6b504' }}>YELO Car Rental Dashboard - By Mohamed Alamir</h1>
+      <h1 style={{ color: '#f6b504' }}>YELO Car Rental Dashboard - Mohamed Alamir</h1>
       <div style={{ display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
         <input
           type="text"
@@ -196,9 +203,8 @@ export default function CarSearchTool() {
           <input type="checkbox" checked={showOnlyMismatch} onChange={toggleMismatchFilter} />
           Show Mismatched Only
         </label>
-        <button onClick={fetchFromGoogleSheet}>🔄 Google Sheet</button>
-        <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
         <button onClick={exportToExcel}>📤 Export</button>
+        <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
       </div>
       {results.length > 0 && (
         <div style={{ overflowX: "auto", maxHeight: "75vh" }}>
@@ -220,7 +226,6 @@ export default function CarSearchTool() {
                         value={filters[header]?.map((v) => ({ label: v, value: v })) || []}
                         onChange={(selected) => handleFilterChange(header, selected.map((s) => s.value))}
                         placeholder={`Filter ${header}`}
-
                         styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
                         menuPortalTarget={document.body}
                       />
