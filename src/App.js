@@ -8,81 +8,17 @@ export default function CarSearchTool() {
   const [results, setResults] = useState([]);
   const [filters, setFilters] = useState({});
   const [showOnlyMismatch, setShowOnlyMismatch] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const tableRef = useRef(null);
 
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.innerHTML = `
-      .resizer {
-        position: absolute;
-        right: 0;
-        top: 0;
-        width: 5px;
-        height: 100%;
-        cursor: col-resize;
-        user-select: none;
-        background-color: transparent;
-        z-index: 1;
-      }
-      th.resizable {
-        position: relative;
-      }
-      thead th {
-        position: sticky;
-        top: 0;
-        background: #fff;
-        z-index: 2;
-      }
-      .mismatch {
-        background-color: #fff3cd !important;
-      }
-    `;
-    document.head.appendChild(style);
+  const normalize = (str) => str?.toString().toLowerCase().replace(/\s+/g, "").trim();
 
-    const table = tableRef.current;
-    if (!table) return;
-
-    const cols = table.querySelectorAll("th.resizable");
-    cols.forEach((col, index) => {
-      const resizer = document.createElement("div");
-      resizer.className = "resizer";
-      col.appendChild(resizer);
-
-      let startX, startWidth;
-      const onMouseMove = (e) => {
-        const newWidth = startWidth + (e.pageX - startX);
-        col.style.width = newWidth + "px";
-        const rows = table.querySelectorAll("tbody tr");
-        rows.forEach((row) => {
-          const cell = row.children[index];
-          if (cell) cell.style.width = newWidth + "px";
-        });
-      };
-
-      const onMouseUp = () => {
-        document.removeEventListener("mousemove", onMouseMove);
-        document.removeEventListener("mouseup", onMouseUp);
-      };
-
-      resizer.addEventListener("mousedown", (e) => {
-        startX = e.pageX;
-        startWidth = col.offsetWidth;
-        document.addEventListener("mousemove", onMouseMove);
-        document.addEventListener("mouseup", onMouseUp);
-      });
-    });
-  }, [results]);
-
-  // قراءة البيانات من Google Sheets عند تحميل الصفحة
   useEffect(() => {
     const fetchFromGoogleSheet = async () => {
       try {
-        // رابط الـ Google Sheets بصيغة CSV
         const sheetUrl = "https://docs.google.com/spreadsheets/d/1XwBko5v8zOdTdv-By8HK_DvZnYT2T12mBw_SIbCfMkE/export?format=csv&gid=769459790";
         const response = await fetch(sheetUrl);
         const text = await response.text();
-
-        // تحويل البيانات إلى JSON
         const rows = text.split("\n").map((row) => row.split(","));
         const headers = rows.find((row) => row.some((cell) => cell.trim() !== ""));
         const values = rows.slice(rows.indexOf(headers) + 1);
@@ -100,9 +36,48 @@ export default function CarSearchTool() {
         alert("Error fetching Google Sheet data");
       }
     };
-
     fetchFromGoogleSheet();
-  }, []); // هذه الفاصلة فارغة تعني أنها تعمل مرة واحدة عند تحميل الصفحة
+  }, []);
+
+  const handleGlobalSearch = () => {
+    const keyword = normalize(searchTerm);
+    const filtered = data.filter((row) =>
+      Object.values(row).some((val) => normalize(val).includes(keyword))
+    );
+    setResults(filtered);
+  };
+
+  const resetFilters = () => {
+    setFilters({});
+    applyFilters({}, showOnlyMismatch);
+  };
+
+  const applyFilters = (activeFilters, mismatchOnly) => {
+    let filtered = data.filter((row) =>
+      Object.entries(activeFilters).every(([col, vals]) => {
+        if (!vals || vals.length === 0) return true;
+        const val = normalize(row[col] || "");
+        return vals.some((v) => val === v);
+      })
+    );
+    if (mismatchOnly) {
+      filtered = filtered.filter((row) => {
+        const booking = row["Booking Number"] || "";
+        const isNumericBooking = !isNaN(Number(booking));
+        const ejar = normalize(row["EJAR"]);
+        const invygo = normalize(row["INVYGO"]);
+        return isNumericBooking && ejar && invygo && ejar !== invygo;
+      });
+    }
+    setResults(filtered);
+  };
+
+  const exportToExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(results);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Filtered Results");
+    XLSX.writeFile(wb, "yelo_car_data.xlsx");
+  };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -122,68 +97,58 @@ export default function CarSearchTool() {
     reader.readAsBinaryString(file);
   };
 
-  const exportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(results);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Filtered Results");
-    XLSX.writeFile(wb, "yelo_car_data.xlsx");
+  const getAnalytics = () => {
+    let invygoCount = 0;
+    let dailyCount = 0;
+    let monthlyCount = 0;
+    let leasingCount = 0;
+    const otherTypes = {};
+
+    data.forEach((row) => {
+      const booking = (row["Booking Number"] || "").toLowerCase();
+      if (!booking) return;
+      if (!isNaN(Number(booking))) invygoCount++;
+      else if (booking.includes("daily")) dailyCount++;
+      else if (booking.includes("monthly")) monthlyCount++;
+      else if (booking.includes("leasing")) leasingCount++;
+      else otherTypes[booking] = (otherTypes[booking] || 0) + 1;
+    });
+
+    return {
+      total: results.length,
+      invygoCount,
+      dailyCount,
+      monthlyCount,
+      leasingCount,
+      otherTypes,
+    };
   };
 
-  const normalize = (str) => str?.toString().toLowerCase().replace(/\s+/g, "").trim();
+  const analytics = getAnalytics();
 
-  const handleFilterChange = (key, values) => {
-    const updatedFilters = { ...filters, [key]: values };
-    setFilters(updatedFilters);
-    applyFilters(updatedFilters, showOnlyMismatch);
-  };
+  const switchBackMismatches = results.filter(row => {
+    const booking = row["Booking Number"] || "";
+    const isNumericBooking = !isNaN(Number(booking));
+    const ejar = normalize(row["EJAR"]);
+    const invygo = normalize(row["INVYGO"]);
+    return isNumericBooking && ejar && invygo && ejar !== invygo;
+  }).length;
 
-  const resetFilters = () => {
-    setFilters({});
-    setResults(data);
-  };
-
-  const handleGlobalSearch = () => {
-    const keyword = normalize(searchTerm);
-    const filtered = data.filter((row) =>
-      Object.values(row).some((val) => normalize(val).includes(keyword))
-    );
-    setResults(filtered);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleGlobalSearch();
-    }
-  };
-
-  const applyFilters = (activeFilters, mismatchOnly) => {
-    let filtered = data.filter((row) =>
-      Object.entries(activeFilters).every(([col, vals]) => {
-        if (!vals || vals.length === 0) return true;
-        const val = normalize(row[col] || "");
-        return vals.some((v) => val === v);
-      })
-    );
-    if (mismatchOnly) {
-      filtered = filtered.filter((row) => normalize(row["EJAR"]) !== normalize(row["INVYGO"]));
-    }
-    setResults(filtered);
-  };
-
-  const toggleMismatchFilter = () => {
-    const newValue = !showOnlyMismatch;
-    setShowOnlyMismatch(newValue);
-    applyFilters(filters, newValue);
-  };
+  const headers = [
+    "Contract No.", "Booking Number", "Customer", "Pick-up Branch",
+    "EJAR", "Model ( Ejar )", "INVYGO", "Model", "Pick-up Date"
+  ];
 
   const getUniqueValues = (column) => {
     const values = data.map(row => row[column] || "").filter(Boolean);
     return Array.from(new Set(values.map(normalize)));
   };
 
-  const headers = [
-    "Contract No.", "Booking Number", "Customer", "Pick-up Branch", "EJAR", "INVYGO", "Model", "Pick-up Date"
-  ];
+  const handleFilterChange = (key, values) => {
+    const updatedFilters = { ...filters, [key]: values };
+    setFilters(updatedFilters);
+    applyFilters(updatedFilters, showOnlyMismatch);
+  };
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
@@ -194,25 +159,48 @@ export default function CarSearchTool() {
           placeholder="🔍 Search across all fields..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={handleKeyPress}
+          onKeyDown={(e) => { if (e.key === "Enter") handleGlobalSearch(); }}
           style={{ padding: 8, minWidth: 250 }}
         />
         <button onClick={handleGlobalSearch}>🔍 Search</button>
         <button onClick={resetFilters}>♻ Reset Filters</button>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <input type="checkbox" checked={showOnlyMismatch} onChange={toggleMismatchFilter} />
-          Show Mismatched Only
+          <input type="checkbox" checked={showOnlyMismatch} onChange={() => {
+            const newValue = !showOnlyMismatch;
+            setShowOnlyMismatch(newValue);
+            applyFilters(filters, newValue);
+          }} />
+          Show Mismatched Only ({switchBackMismatches})
         </label>
         <button onClick={exportToExcel}>📤 Export</button>
+        <button onClick={() => setShowAnalytics(!showAnalytics)}>📊 Analytics</button>
         <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
       </div>
+
+      {showAnalytics && (
+        <div style={{ marginBottom: 20, background: "#f0f0f0", padding: 10, borderRadius: 6 }}>
+          <h3>🔍 Quick Analytics</h3>
+          <p>Total Bookings: {analytics.total}</p>
+          <p>Invygo Bookings (numeric only): {analytics.invygoCount}</p>
+          <p>Daily Bookings: {analytics.dailyCount}</p>
+          <p>Monthly Bookings: {analytics.monthlyCount}</p>
+          <p>Leasing Bookings: {analytics.leasingCount}</p>
+          <p>Switch Back Mismatches: {switchBackMismatches}</p>
+          {Object.entries(analytics.otherTypes).map(([type, count]) => (
+            <p key={type} style={{ margin: 0 }}>
+              {type.charAt(0).toUpperCase() + type.slice(1)} Bookings: {count}
+            </p>
+          ))}
+        </div>
+      )}
+
       {results.length > 0 && (
         <div style={{ overflowX: "auto", maxHeight: "75vh" }}>
           <table ref={tableRef} style={{ borderCollapse: "collapse", minWidth: "1600px", background: "#fff" }}>
             <thead>
               <tr>
                 {headers.map((header, index) => (
-                  <th key={index} className="resizable" style={{ border: "1px solid #ccc", padding: "8px", minWidth: 150 }}>{header}</th>
+                  <th key={index} style={{ border: "1px solid #ccc", padding: "8px", minWidth: 150, textAlign: "center" }}>{header}</th>
                 ))}
               </tr>
               <tr>
@@ -236,11 +224,32 @@ export default function CarSearchTool() {
             </thead>
             <tbody>
               {results.map((row, idx) => {
-                const mismatch = normalize(row["EJAR"]) !== normalize(row["INVYGO"]);
+                const booking = row["Booking Number"] || "";
+                const isNumericBooking = !isNaN(Number(booking));
+                const ejar = normalize(row["EJAR"]);
+                const invygo = normalize(row["INVYGO"]);
+                const isMismatch = isNumericBooking && ejar && invygo && ejar !== invygo;
+
+                const duplicateBookings = results.map(r => r["Booking Number"]).filter(v => v === booking);
+                const isBookingNumberDuplicated = duplicateBookings.filter(v => !isNaN(v)).length > 1;
+
                 return (
-                  <tr key={idx} className={mismatch ? "mismatch" : ""}>
+                  <tr key={idx} style={{ backgroundColor: isMismatch ? "#fff3cd" : "" }}>
                     {headers.map((header, index) => (
-                      <td key={index} style={{ border: "1px solid #ddd", padding: "6px" }}>{row[header]}</td>
+                      <td
+                        key={index}
+                        style={{
+                          border: "1px solid #ddd",
+                          padding: "6px",
+                          textAlign: "center",
+                          color:
+                            header === "Booking Number" && isBookingNumberDuplicated
+                              ? "red"
+                              : undefined,
+                        }}
+                      >
+                        {row[header]}
+                      </td>
                     ))}
                   </tr>
                 );

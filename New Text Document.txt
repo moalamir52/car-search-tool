@@ -1,1 +1,9 @@
-bash deploy.sh
+git add .
+git commit -m "Update code"
+git push origin main
+
+
+انشر التحديثات على GitHub Pages:
+
+
+npm run deploy
