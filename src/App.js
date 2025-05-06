@@ -192,7 +192,7 @@ export default function CarSearchTool() {
   return (
     <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
       <h1 style={{ color: "#f6b504" }}>
-        YELO Car Rental Dashboard - Mohamed Alamir
+        YELO Car Rental Dashboard - Business Bay Team
       </h1>
       <div
         style={{ display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap" }}
