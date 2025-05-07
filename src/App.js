@@ -6,78 +6,41 @@ export default function CarSearchTool() {
   const [data, setData] = useState([]);
   const [results, setResults] = useState([]);
   const [showOnlyMismatch, setShowOnlyMismatch] = useState(false);
-  const [showReturnedRepairedOnly, setShowReturnedRepairedOnly] =
-    useState(false);
+  const [showReturnedRepairedOnly, setShowReturnedRepairedOnly] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [maintenanceData, setMaintenanceData] = useState([]);
   const tableRef = useRef(null);
 
-  const normalize = (str) =>
-    str?.toString().toLowerCase().replace(/\s+/g, "").trim();
+  const normalize = (str) => str?.toString().toLowerCase().replace(/\s+/g, "").trim();
 
   useEffect(() => {
-    const fetchFromGoogleSheet = async () => {
-      try {
-        const sheetUrl =
-          "https://docs.google.com/spreadsheets/d/1XwBko5v8zOdTdv-By8HK_DvZnYT2T12mBw_SIbCfMkE/export?format=csv&gid=769459790";
-        const response = await fetch(sheetUrl);
-        const text = await response.text();
-        const rows = text.split("\n").map((row) => row.split(","));
-        const headers = rows.find((row) =>
-          row.some((cell) => cell.trim() !== "")
-        );
-        const values = rows.slice(rows.indexOf(headers) + 1);
-        const jsonData = values
-          .filter(
-            (row) =>
-              row.length === headers.length &&
-              row.some((cell) => cell.trim() !== "")
-          )
-          .map((row) =>
-            Object.fromEntries(
-              row.map((cell, i) => [headers[i]?.trim(), cell?.trim()])
-            )
-          );
-        setData(jsonData);
-        setResults(jsonData);
-      } catch (error) {
-        console.error(error);
-        alert("Error fetching Google Sheet data");
-      }
+    const fetchSheet = async (url) => {
+      const response = await fetch(url);
+      const text = await response.text();
+      const rows = text.split("\n").map((r) => r.split(","));
+      const headers = rows.find((row) => row.some((c) => c.trim() !== ""));
+      const values = rows.slice(rows.indexOf(headers) + 1);
+      return values
+        .filter((r) => r.length === headers.length && r.some((c) => c.trim() !== ""))
+        .map((r) => Object.fromEntries(r.map((c, i) => [headers[i]?.trim(), c?.trim()])));
     };
-    fetchFromGoogleSheet();
-  }, []);
 
-  useEffect(() => {
-    const fetchMaintenanceData = async () => {
+    const loadSheets = async () => {
       try {
-        const sheetUrl =
-          "https://docs.google.com/spreadsheets/d/1v4rQWn6dYPVQPd-PkhvrDNgKVnexilrR2XIUVa5RKEM/export?format=csv&gid=0";
-        const response = await fetch(sheetUrl);
-        const text = await response.text();
-        const rows = text.split("\n").map((row) => row.split(","));
-        const headers = rows.find((row) =>
-          row.some((cell) => cell.trim() !== "")
-        );
-        const values = rows.slice(rows.indexOf(headers) + 1);
-        const jsonData = values
-          .filter(
-            (row) =>
-              row.length === headers.length &&
-              row.some((cell) => cell.trim() !== "")
-          )
-          .map((row) =>
-            Object.fromEntries(
-              row.map((cell, i) => [headers[i]?.trim(), cell?.trim()])
-            )
-          );
-        setMaintenanceData(jsonData);
-      } catch (error) {
-        console.error(error);
-        alert("Error fetching maintenance data");
+        const [mainData, maintenance] = await Promise.all([
+          fetchSheet("https://docs.google.com/spreadsheets/d/1XwBko5v8zOdTdv-By8HK_DvZnYT2T12mBw_SIbCfMkE/export?format=csv&gid=769459790"),
+          fetchSheet("https://docs.google.com/spreadsheets/d/1v4rQWn6dYPVQPd-PkhvrDNgKVnexilrR2XIUVa5RKEM/export?format=csv&gid=0")
+        ]);
+        setData(mainData);
+        setResults(mainData);
+        setMaintenanceData(maintenance);
+      } catch (err) {
+        console.error(err);
+        alert("Error fetching Google Sheets");
       }
     };
-    fetchMaintenanceData();
+
+    loadSheets();
   }, []);
 
   const getAnalytics = () => {
@@ -97,7 +60,6 @@ export default function CarSearchTool() {
       else if (booking.includes("leasing")) leasingCount++;
       else otherTypes[booking] = (otherTypes[booking] || 0) + 1;
 
-      // Count mismatches
       const ejar = normalize(row["EJAR"]);
       const invygo = normalize(row["INVYGO"]);
       if (ejar && invygo && ejar !== invygo) {
@@ -166,7 +128,8 @@ export default function CarSearchTool() {
     const ws = XLSX.utils.json_to_sheet(results);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Filtered Results");
-    XLSX.writeFile(wb, "yelo_car_data.xlsx");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `YELO_Report_${dateStr}.xlsx`);
   };
 
   const switchBackMismatches = results.filter((row) => {
@@ -194,9 +157,7 @@ export default function CarSearchTool() {
       <h1 style={{ color: "#f6b504" }}>
         YELO Car Rental Dashboard - Business Bay Team
       </h1>
-      <div
-        style={{ display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap" }}
-      >
+      <div style={{ display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
         <input
           type="text"
           placeholder="🔍 Search across all fields..."
@@ -239,15 +200,12 @@ export default function CarSearchTool() {
         </button>
       </div>
 
+      {results.length === 0 && (
+        <p style={{ color: "red", marginBottom: 10 }}>⚠ No matching results found.</p>
+      )}
+
       {showAnalytics && (
-        <div
-          style={{
-            marginBottom: 20,
-            background: "#f0f0f0",
-            padding: 10,
-            borderRadius: 6,
-          }}
-        >
+        <div style={{ marginBottom: 20, background: "#f0f0f0", padding: 10, borderRadius: 6 }}>
           <h3>🔍 Quick Analytics</h3>
           <p>✅Total Rows: {analytics.total}</p>
           <p>✅INVYGO: {analytics.invygoCount}</p>
@@ -255,22 +213,17 @@ export default function CarSearchTool() {
           <p>✅Monthly + Sponsorship: {analytics.monthlyCount}</p>
           <p>✅Leasing: {analytics.leasingCount}</p>
           <p>✅Mismatched: ({switchBackMismatches})</p>
-          <p>
-            ✅ Ready to Switch Back:{" "}
-            {
-              results.filter((row) => {
-                const booking = row["Booking Number"] || "";
-                const isNumericBooking = !isNaN(Number(booking));
-                const ejar = normalize(row["EJAR"]);
-                const invygo = normalize(row["INVYGO"]);
-                const maintenance = maintenanceData.find(
-                  (m) => m["Vehicle"] === row["INVYGO"]
-                );
-                const isRepairDone = maintenance && maintenance["Date IN"];
-                return isRepairDone && isNumericBooking && ejar !== invygo;
-              }).length
-            }
-          </p>
+          <p>✅ Ready to Switch Back: {
+            results.filter((row) => {
+              const booking = row["Booking Number"] || "";
+              const isNumericBooking = !isNaN(Number(booking));
+              const ejar = normalize(row["EJAR"]);
+              const invygo = normalize(row["INVYGO"]);
+              const maintenance = maintenanceData.find((m) => m["Vehicle"] === row["INVYGO"]);
+              const isRepairDone = maintenance && maintenance["Date IN"];
+              return isRepairDone && isNumericBooking && ejar !== invygo;
+            }).length
+          }</p>
         </div>
       )}
 
@@ -278,11 +231,7 @@ export default function CarSearchTool() {
         <div style={{ overflowX: "auto", maxHeight: "75vh" }}>
           <table
             ref={tableRef}
-            style={{
-              borderCollapse: "collapse",
-              minWidth: "1600px",
-              background: "#fff",
-            }}
+            style={{ borderCollapse: "collapse", minWidth: "1600px", background: "#fff" }}
           >
             <thead>
               <tr>
@@ -308,6 +257,10 @@ export default function CarSearchTool() {
                       padding: "8px",
                       minWidth: 150,
                       textAlign: "center",
+                      position: "sticky",
+                      top: 0,
+                      backgroundColor: "#fff",
+                      zIndex: 1,
                     }}
                   >
                     {header}
@@ -325,8 +278,7 @@ export default function CarSearchTool() {
                   (m) => m["Vehicle"] === row["INVYGO"]
                 );
                 const isRepairDone = maintenance && maintenance["Date IN"];
-                const isMismatch =
-                  isNumericBooking && ejar && invygo && ejar !== invygo;
+                const isMismatch = isNumericBooking && ejar && invygo && ejar !== invygo;
 
                 return (
                   <tr
