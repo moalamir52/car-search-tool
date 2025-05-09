@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
+import DailyBookingReport from "./report";
 
 export default function CarSearchTool() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -8,6 +9,7 @@ export default function CarSearchTool() {
   const [showOnlyMismatch, setShowOnlyMismatch] = useState(false);
   const [showReturnedRepairedOnly, setShowReturnedRepairedOnly] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showDailyReport, setShowDailyReport] = useState(false);
   const [maintenanceData, setMaintenanceData] = useState([]);
   const tableRef = useRef(null);
 
@@ -152,20 +154,31 @@ export default function CarSearchTool() {
     "Pick-up Date",
   ];
 
+  const Modal = ({ title, children, onClose }) => (
+    <div style={{
+      position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+      backgroundColor: "rgba(0, 0, 0, 0.5)", display: "flex",
+      alignItems: "center", justifyContent: "center", zIndex: 9999
+    }}>
+      <div style={{ background: "white", padding: 20, borderRadius: 8, minWidth: 300 }}>
+        <h3>{title}</h3>
+        <div>{children}</div>
+        <button onClick={onClose} style={{ marginTop: 10 }}>❌ Cancel</button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
-      <h1 style={{ color: "#f6b504" }}>
-        YELO Car Rental Dashboard - Business Bay Team
-      </h1>
+      <h1 style={{ color: "#f6b504" }}>YELO Car Rental Dashboard - Business Bay Team</h1>
+
       <div style={{ display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
         <input
           type="text"
           placeholder="🔍 Search across all fields..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleGlobalSearch();
-          }}
+          onKeyDown={(e) => e.key === "Enter" && handleGlobalSearch()}
           style={{ padding: 8, minWidth: 250 }}
         />
         <button onClick={handleGlobalSearch}>🔍 Search</button>
@@ -195,24 +208,43 @@ export default function CarSearchTool() {
           Show Ready to Switch Back
         </label>
         <button onClick={exportToExcel}>📤 Export</button>
-        <button onClick={() => setShowAnalytics((prev) => !prev)}>
-          📊 Show Analytics
-        </button>
+        <button onClick={() => setShowAnalytics(true)}>📊 Show Analytics</button>
+        <button onClick={() => setShowDailyReport(true)}>📅 Daily Report</button>
       </div>
 
-      {results.length === 0 && (
-        <p style={{ color: "red", marginBottom: 10 }}>⚠ No matching results found.</p>
+      {results.length > 0 && (
+        <div style={{ overflowX: "auto", maxHeight: "75vh" }}>
+          <table ref={tableRef} style={{ borderCollapse: "collapse", minWidth: "1600px", background: "#fff" }}>
+            <thead>
+              <tr>
+                <th style={{ border: "1px solid #ccc", padding: "8px", minWidth: 50, textAlign: "center", position: "sticky", top: 0, backgroundColor: "#fff", zIndex: 1 }}>#</th>
+                {headers.map((header, index) => (
+                  <th key={index} style={{ border: "1px solid #ccc", padding: "8px", minWidth: 150, textAlign: "center", position: "sticky", top: 0, backgroundColor: "#fff", zIndex: 1 }}>{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((row, idx) => (
+                <tr key={idx}>
+                  <td style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>{idx + 1}</td>
+                  {headers.map((header, index) => (
+                    <td key={index} style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>{row[header] || ""}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {showAnalytics && (
-        <div style={{ marginBottom: 20, background: "#f0f0f0", padding: 10, borderRadius: 6 }}>
-          <h3>🔍 Quick Analytics</h3>
-          <p>✅Total Rows: {analytics.total}</p>
-          <p>✅INVYGO: {analytics.invygoCount}</p>
-          <p>✅Daily: {analytics.dailyCount}</p>
-          <p>✅Monthly + Sponsorship: {analytics.monthlyCount}</p>
-          <p>✅Leasing: {analytics.leasingCount}</p>
-          <p>✅Mismatched: ({switchBackMismatches})</p>
+        <Modal title="Analytics" onClose={() => setShowAnalytics(false)}>
+          <p>✅ Total Rows: {analytics.total}</p>
+          <p>✅ INVYGO: {analytics.invygoCount}</p>
+          <p>✅ Daily: {analytics.dailyCount}</p>
+          <p>✅ Monthly + Sponsorship: {analytics.monthlyCount}</p>
+          <p>✅ Leasing: {analytics.leasingCount}</p>
+          <p>✅ Mismatched: {switchBackMismatches}</p>
           <p>✅ Ready to Switch Back: {
             results.filter((row) => {
               const booking = row["Booking Number"] || "";
@@ -224,100 +256,13 @@ export default function CarSearchTool() {
               return isRepairDone && isNumericBooking && ejar !== invygo;
             }).length
           }</p>
-        </div>
+        </Modal>
       )}
 
-      {results.length > 0 && (
-        <div style={{ overflowX: "auto", maxHeight: "75vh" }}>
-          <table
-            ref={tableRef}
-            style={{ borderCollapse: "collapse", minWidth: "1600px", background: "#fff" }}
-          >
-            <thead>
-              <tr>
-                <th
-                  style={{
-                    border: "1px solid #ccc",
-                    padding: "8px",
-                    minWidth: 50,
-                    textAlign: "center",
-                    position: "sticky",
-                    top: 0,
-                    backgroundColor: "#fff",
-                    zIndex: 1,
-                  }}
-                >
-                  # (Index)
-                </th>
-                {headers.map((header, index) => (
-                  <th
-                    key={index}
-                    style={{
-                      border: "1px solid #ccc",
-                      padding: "8px",
-                      minWidth: 150,
-                      textAlign: "center",
-                      position: "sticky",
-                      top: 0,
-                      backgroundColor: "#fff",
-                      zIndex: 1,
-                    }}
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {results.map((row, idx) => {
-                const booking = row["Booking Number"] || "";
-                const isNumericBooking = !isNaN(Number(booking));
-                const ejar = normalize(row["EJAR"]);
-                const invygo = normalize(row["INVYGO"]);
-                const maintenance = maintenanceData.find(
-                  (m) => m["Vehicle"] === row["INVYGO"]
-                );
-                const isRepairDone = maintenance && maintenance["Date IN"];
-                const isMismatch = isNumericBooking && ejar && invygo && ejar !== invygo;
-
-                return (
-                  <tr
-                    key={idx}
-                    style={{
-                      backgroundColor: isMismatch
-                        ? isRepairDone
-                          ? "#d4edda"
-                          : "#fff3cd"
-                        : "",
-                    }}
-                  >
-                    <td
-                      style={{
-                        border: "1px solid #ddd",
-                        padding: "6px",
-                        textAlign: "center",
-                      }}
-                    >
-                      {idx + 1}
-                    </td>
-                    {headers.map((header, index) => (
-                      <td
-                        key={index}
-                        style={{
-                          border: "1px solid #ddd",
-                          padding: "6px",
-                          textAlign: "center",
-                        }}
-                      >
-                        {row[header]}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {showDailyReport && (
+        <Modal title="📅 Daily Report" onClose={() => setShowDailyReport(false)}>
+          <DailyBookingReport />
+        </Modal>
       )}
     </div>
   );
