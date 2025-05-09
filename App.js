@@ -224,15 +224,36 @@ export default function CarSearchTool() {
               </tr>
             </thead>
             <tbody>
-              {results.map((row, idx) => (
-                <tr key={idx}>
-                  <td style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>{idx + 1}</td>
-                  {headers.map((header, index) => (
-                    <td key={index} style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>{row[header] || ""}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
+  {results.map((row, idx) => {
+    const booking = row["Booking Number"] || "";
+    const isNumericBooking = !isNaN(Number(booking));
+    const ejar = normalize(row["EJAR"]);
+    const invygo = normalize(row["INVYGO"]);
+    const isMismatch = isNumericBooking && ejar && invygo && ejar !== invygo;
+
+    const maintenance = maintenanceData.find((m) => m["Vehicle"] === row["INVYGO"]);
+    const isRepairDone = maintenance && maintenance["Date IN"];
+    const isReadyToSwitchBack = isMismatch && isRepairDone;
+
+    let rowStyle = {};
+    if (isReadyToSwitchBack) {
+      rowStyle.backgroundColor = "yellow";
+    } else if (isMismatch) {
+      rowStyle.backgroundColor = "pink";
+    }
+
+    return (
+      <tr key={idx} style={rowStyle}>
+        <td style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>{idx + 1}</td>
+        {headers.map((header, index) => (
+          <td key={index} style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>
+            {row[header] || ""}
+          </td>
+        ))}
+      </tr>
+    );
+  })}
+</tbody>
           </table>
         </div>
       )}

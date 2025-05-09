@@ -224,7 +224,7 @@ export default function CarSearchTool() {
               </tr>
             </thead>
             <tbody>
-              {results.map((row, idx) => {
+  {results.map((row, idx) => {
     const booking = row["Booking Number"] || "";
     const isNumericBooking = !isNaN(Number(booking));
     const ejar = normalize(row["EJAR"]);
@@ -249,8 +249,11 @@ export default function CarSearchTool() {
           <td key={index} style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>
             {row[header] || ""}
           </td>
-              ))}
-            </tbody>
+        ))}
+      </tr>
+    );
+  })}
+</tbody>
           </table>
         </div>
       )}
