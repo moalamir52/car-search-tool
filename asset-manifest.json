@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/car-search-tool/static/css/main.e6c13ad2.css",
-    "main.js": "/car-search-tool/static/js/main.441eb0ee.js",
+    "main.js": "/car-search-tool/static/js/main.609c1c0d.js",
     "static/js/453.2d59f626.chunk.js": "/car-search-tool/static/js/453.2d59f626.chunk.js",
     "index.html": "/car-search-tool/index.html",
     "main.e6c13ad2.css.map": "/car-search-tool/static/css/main.e6c13ad2.css.map",
-    "main.441eb0ee.js.map": "/car-search-tool/static/js/main.441eb0ee.js.map",
+    "main.609c1c0d.js.map": "/car-search-tool/static/js/main.609c1c0d.js.map",
     "453.2d59f626.chunk.js.map": "/car-search-tool/static/js/453.2d59f626.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.441eb0ee.js"
+    "static/js/main.609c1c0d.js"
   ]
 }
