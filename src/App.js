@@ -237,9 +237,9 @@ export default function CarSearchTool() {
 
     let rowStyle = {};
     if (isReadyToSwitchBack) {
-      rowStyle.backgroundColor = "yellow";
+      rowStyle.backgroundColor = "#EDE275";
     } else if (isMismatch) {
-      rowStyle.backgroundColor = "pink";
+      rowStyle.backgroundColor = "#E799A3";
     }
 
     return (
