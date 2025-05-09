@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 
@@ -39,11 +40,9 @@ export default function DailyBookingReport() {
     } else {
       [dd, mm, yyyy] = parts;
     }
-    const normalized = `{yyyy}-{pad(mm)}-{pad(dd)}`;
+    const normalized = `${yyyy}-${pad(mm)}-${pad(dd)}`;
     return normalized === selectedDate;
   });
-
-  const customOrder = ['Mitsubishi Attrage', 'JAC S4 2023', 'Geely Emgrand 2024', 'MG 5 2024', 'MG 5 2025', 'Kia Pegas 2024', 'Chery Tiggo 2025', 'Peugeot 2008 2025'];
 
   const allCarCount = (() => {
     const grouped = {};
@@ -58,18 +57,6 @@ export default function DailyBookingReport() {
     });
     return grouped;
   })();
-
-  const sortedModels = Object.entries(allCarCount).sort(([a], [b]) => {
-    const indexA = customOrder.indexOf(a);
-    const indexB = customOrder.indexOf(b);
-    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-  });
-
-  const sortedByModel = [...filteredByDate].sort((a, b) => {
-    const indexA = customOrder.indexOf(a["Model"]);
-    const indexB = customOrder.indexOf(b["Model"]);
-    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-  });
 
   return (
     <div style={{ padding: 20 }}>
@@ -87,7 +74,7 @@ export default function DailyBookingReport() {
         }}
       >
         <div style={{ background: "#f9f9f9", padding: 10, border: "1px solid #ccc", flex: "1 1 45%", minWidth: "300px" }}>
-          <h3> Total number of cars by model </h3>
+          <h3>📦 إجمالي السيارات بالكامل حسب الموديل</h3>
           <table style={{ borderCollapse: "collapse", width: "100%" }}>
             <thead>
               <tr>
@@ -96,7 +83,7 @@ export default function DailyBookingReport() {
               </tr>
             </thead>
             <tbody>
-              {sortedModels.map(([model, count], idx) => (
+              {Object.entries(allCarCount).map(([model, count], idx) => (
                 <tr key={idx}>
                   <td style={{ border: "1px solid #ddd", padding: 6 }}>{model}</td>
                   <td style={{ border: "1px solid #ddd", padding: 6 }}>{count}</td>
@@ -113,7 +100,7 @@ export default function DailyBookingReport() {
         </div>
 
         <div style={{ background: "#f9f9f9", padding: 10, border: "1px solid #ccc", flex: "1 1 45%", minWidth: "300px" }}>
-          <h4> Booked cars in 🚘{selectedDate}</h4>
+          <h4>🚘 السيارات التي تم حجزها في {selectedDate}</h4>
           <table style={{ borderCollapse: "collapse", width: "100%" }}>
             <thead>
               <tr>
@@ -122,7 +109,7 @@ export default function DailyBookingReport() {
               </tr>
             </thead>
             <tbody>
-              {sortedByModel.map((row, idx) => (
+              {filteredByDate.map((row, idx) => (
                 <tr key={idx}>
                   <td style={{ border: "1px solid #ddd", padding: 6 }}>{row["Model"]}</td>
                   <td style={{ border: "1px solid #ddd", padding: 6 }}>{row["INVYGO"]}</td>
