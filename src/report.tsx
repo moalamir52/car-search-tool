@@ -74,7 +74,7 @@ export default function DailyBookingReport() {
         }}
       >
         <div style={{ background: "#f9f9f9", padding: 10, border: "1px solid #ccc", flex: "1 1 45%", minWidth: "300px" }}>
-          <h3>📦 إجمالي السيارات بالكامل حسب الموديل</h3>
+          <h3> Total of Cars 📦 </h3>
           <table style={{ borderCollapse: "collapse", width: "100%" }}>
             <thead>
               <tr>
@@ -100,7 +100,7 @@ export default function DailyBookingReport() {
         </div>
 
         <div style={{ background: "#f9f9f9", padding: 10, border: "1px solid #ccc", flex: "1 1 45%", minWidth: "300px" }}>
-          <h4>🚘 السيارات التي تم حجزها في {selectedDate}</h4>
+          <h4> Booked Cars 🚘{selectedDate}</h4>
           <table style={{ borderCollapse: "collapse", width: "100%" }}>
             <thead>
               <tr>
