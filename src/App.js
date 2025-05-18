@@ -152,6 +152,7 @@ export default function CarSearchTool() {
     "INVYGO",
     "Model",
     "Pick-up Date",
+    "Phone",
   ];
 
   const Modal = ({ title, children, onClose }) => (
