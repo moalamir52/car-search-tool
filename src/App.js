@@ -142,17 +142,16 @@ export default function CarSearchTool() {
     return isNumericBooking && ejar && invygo && ejar !== invygo;
   }).length;
 
-  const headers = [
+  const headersToShow = [
     "Contract No.",
     "Booking Number",
     "Customer",
-    "Pick-up Branch",
     "EJAR",
     "Model ( Ejar )",
     "INVYGO",
     "Model",
+    "Phone Number",
     "Pick-up Date",
-    "Phone",
   ];
 
   const Modal = ({ title, children, onClose }) => (
